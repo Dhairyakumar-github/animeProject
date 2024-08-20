@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:better_player/better_player.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'dart:async';
 
 class VideoController extends GetxController {
   late BetterPlayerController betterPlayerController;
@@ -9,62 +10,64 @@ class VideoController extends GetxController {
   var resolutions = <String, String>{}.obs;
   var servers = <String>["VidHide", "Stream Wish", "File Moon"].obs;
   var selectedServer = "Stream Wish".obs;
-
+  final RxString streamId = "".obs;
   var m3u8Links = <String>[].obs;
-
-  // Track whether the controller has been disposed
   bool disposed = false;
 
   @override
   void onInit() {
     super.onInit();
-    initializePlayer(); // Initialize the player during onInit
-    fetchM3u8Links(); // Fetch and play video when the controller initializes
+    initializePlayer();
   }
 
   void initializePlayer() {
     betterPlayerController = BetterPlayerController(
       const BetterPlayerConfiguration(
         aspectRatio: 16 / 9,
-        autoPlay: true,
+        autoPlay: false, // Start with autoPlay off, enable later
         looping: true,
+        handleLifecycle: true,
       ),
     );
   }
 
   @override
   void onClose() {
-    // Dispose of the BetterPlayerController to avoid memory leaks
     betterPlayerController.dispose();
-    disposed = true; // Mark the controller as disposed
+    disposed = true;
     super.onClose();
   }
 
-  Future<void> fetchM3u8Links() async {
-    final apiUrl =
-        'https://otaku1-eflaqjv0.b4a.run/api/stream?id=naruto-shipp-den-63?ep=1186';
+  Future<void> fetchM3u8Links({
+    int retryCount = 3,
+  }) async {
+    final apiUrl = 'https://otaku1-eflaqjv0.b4a.run/api/stream?id=$streamId';
 
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-      if (response.statusCode == 200) {
+      final response = await retryFetch(
+        () async => await http.get(Uri.parse(apiUrl)),
+        retryCount: retryCount,
+        delayBetweenRetries: Duration(seconds: 2),
+      );
+
+      if (response != null && response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         final streamingInfo = jsonResponse['results']['streamingInfo'] as List?;
 
         if (streamingInfo != null) {
-          m3u8Links.clear(); // Clear any previous links
+          m3u8Links.clear();
           for (var server in streamingInfo) {
             if (server['server'] == selectedServer.value) {
               final sources =
                   List<Map<String, dynamic>>.from(server['sources']);
               for (var sourceObj in sources) {
-                await processSource(sourceObj);
+                await processSource(sourceObj, retryCount: retryCount);
               }
               break;
             }
           }
           if (m3u8Links.isNotEmpty) {
-            setBetterPlayerSource(
-                m3u8Links.first); // Start playback immediately
+            setBetterPlayerSource(m3u8Links.first);
           } else {
             print('No m3u8 links found.');
           }
@@ -74,7 +77,7 @@ class VideoController extends GetxController {
           isLoading.value = false;
         }
       } else {
-        print('Failed to fetch data: ${response.statusCode}');
+        print('Failed to fetch data: ${response?.statusCode}');
         isLoading.value = false;
       }
     } catch (error) {
@@ -83,51 +86,80 @@ class VideoController extends GetxController {
     }
   }
 
-  Future<void> processSource(Map<String, dynamic> sourceObj) async {
+  Future<void> processSource(Map<String, dynamic> sourceObj,
+      {int retryCount = 3}) async {
     final String htmlUrl = sourceObj['source'];
 
     try {
-      final response = await http.get(Uri.parse(htmlUrl));
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to fetch HTML data, status: ${response.statusCode}');
-      }
-
-      final htmlData = response.body;
-      final apiUrl =
-          'https://server2stwish-erzip86p4-kashyap2024s-projects.vercel.app/api/html';
-      final apiResponse = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'text/html'},
-        body: htmlData,
+      final response = await retryFetch(
+        () async => await http.get(Uri.parse(htmlUrl)),
+        retryCount: retryCount,
+        delayBetweenRetries: Duration(seconds: 2),
       );
 
-      final data = json.decode(apiResponse.body);
-      print("this is data:   $data");
-      if (data['source'] != null) {
-        m3u8Links.add(data['source']); // Store the m3u8 link in the list
-        print('m3u8 link added: ${data['source']}');
+      if (response != null && response.statusCode == 200) {
+        final htmlData = response.body;
+        final apiUrl =
+            'https://server2stwish-erzip86p4-kashyap2024s-projects.vercel.app/api/html';
+        final apiResponse = await retryFetch(
+          () async => await http.post(
+            Uri.parse(apiUrl),
+            headers: {'Content-Type': 'text/html'},
+            body: htmlData,
+          ),
+          retryCount: retryCount,
+          delayBetweenRetries: Duration(seconds: 2),
+        );
+
+        if (apiResponse != null && apiResponse.body.isNotEmpty) {
+          try {
+            final data = json.decode(apiResponse.body);
+            print("Processed data: $data");
+            if (data['source'] != null) {
+              m3u8Links.add(data['source']);
+              print('m3u8 link added: ${data['source']}');
+            } else {
+              print('Invalid response format: $data');
+            }
+          } catch (e) {
+            print('Error decoding response: $e');
+          }
+        } else {
+          print('API response is empty or null');
+        }
       } else {
-        // processSource(sourceObj);
-        print('Invalid response format: $data');
+        print('Failed to fetch HTML data, status: ${response?.statusCode}');
       }
     } catch (error) {
       print('Error processing source: $error');
     }
   }
 
+  Future<http.Response?> retryFetch(
+      Future<http.Response> Function() fetchFunction,
+      {int retryCount = 3,
+      Duration delayBetweenRetries = const Duration(seconds: 2)}) async {
+    for (int i = 0; i < retryCount; i++) {
+      try {
+        final response = await fetchFunction();
+        if (response.statusCode == 200) {
+          return response;
+        }
+      } catch (error) {
+        print('Fetch attempt ${i + 1} failed: $error');
+      }
+
+      if (i < retryCount - 1) {
+        await Future.delayed(delayBetweenRetries);
+      }
+    }
+    return null;
+  }
+
   void setBetterPlayerSource(String defaultLink) async {
-    if (disposed)
-      return; // Ensure the controller is not disposed before using it
+    if (disposed) return;
 
     Map<String, String> resolutionsMap = {};
-    List<BetterPlayerDataSource> dataSources = m3u8Links
-        .map((link) => BetterPlayerDataSource(
-              BetterPlayerDataSourceType.network,
-              link,
-            ))
-        .toList();
-
     for (int i = 0; i < m3u8Links.length; i++) {
       resolutionsMap['Quality ${i + 1}'] = m3u8Links[i];
     }
@@ -138,10 +170,10 @@ class VideoController extends GetxController {
       resolutions: resolutionsMap,
     );
 
-    betterPlayerController.setupDataSource(betterPlayerDataSource);
+    await betterPlayerController.setupDataSource(betterPlayerDataSource);
     print('BetterPlayer source set to: $defaultLink');
 
-    betterPlayerController.play(); // Ensure the video starts playing
+    betterPlayerController.play();
   }
 
   void changeServer(String newServer) {

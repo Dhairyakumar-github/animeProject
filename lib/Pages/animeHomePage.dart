@@ -9,7 +9,7 @@ import 'package:get/get.dart';
 class AnimeHomePage extends StatelessWidget {
   final Service controller = Get.put(Service());
   final VideoController videoController = Get.put(VideoController());
-  final dynamic data;
+  final data;
 
   AnimeHomePage({
     super.key,
@@ -17,6 +17,8 @@ class AnimeHomePage extends StatelessWidget {
   }) {
     // Fetch season data by default when the widget is created
     controller.getSeasonData(id: data.hrefgetseason);
+    print("this is hrefgetdata.... = ${data.hrefgetseason}");
+
     // videoController.fetchM3u8Links();
     // controller.selectedSeason.value = "";
     // controller.getEpisodesData(
@@ -54,13 +56,13 @@ class AnimeHomePage extends StatelessWidget {
                         }
 
                         // If no selected season, set it to the first one
-                        if (controller.selectedSeason.value.isNotEmpty) {
-                          controller.selectedSeason.value =
-                              controller.seasonsList.first.hrefgetEpisode!;
-                          controller.getEpisodesData(
-                              id: controller.selectedSeason
-                                  .value); // Fetch episodes for the first season
-                        }
+                        // if (controller.selectedSeason.value.isNotEmpty) {
+                        //   controller.selectedSeason.value =
+                        //       controller.seasonsList.first.hrefgetEpisode!;
+                        //   controller.getEpisodesData(
+                        //       id: controller.selectedSeason
+                        //           .value); // Fetch episodes for the first season
+                        // }
 
                         return Column(
                           children: [
@@ -68,15 +70,15 @@ class AnimeHomePage extends StatelessWidget {
 
                             // if (controller.selectedSeason.value.isNotEmpty)
 
-                            // Expanded(
-                            //   child: AspectRatio(
-                            //     aspectRatio: 16 / 9,
-                            //     child: BetterPlayer(
-                            //       controller:
-                            //           videoController.betterPlayerController,
-                            //     ),
-                            //   ),
-                            // ),
+                            Expanded(
+                              child: AspectRatio(
+                                aspectRatio: 16 / 9,
+                                child: BetterPlayer(
+                                  controller:
+                                      videoController.betterPlayerController,
+                                ),
+                              ),
+                            ),
                             Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Wrap(
@@ -116,13 +118,17 @@ class AnimeHomePage extends StatelessWidget {
                                 print(value);
                                 controller.selectedSeason.value =
                                     value!; // Update selected season
-                                controller.getEpisodesData(
-                                    id: value); // Fetch episodes for the selected season
+                                controller.getEpisodesData(id: value);
+                                // Fetch episodes for the selected season
+                                print(
+                                    " tjhis is ddfdfref ${controller.episodsInfoData.length}");
                               },
                             ),
                             Expanded(
                               child: Obx(
                                 () {
+                                  print(
+                                      " tjhis is ddfdfref ${controller.episodsInfoData[0].dataId}");
                                   // Check if the episodes data is loading
                                   if (controller.isEpisodsDataLoading.value) {
                                     return Center(

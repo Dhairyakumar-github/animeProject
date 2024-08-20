@@ -26,7 +26,7 @@ class Service extends GetxController {
   final RxList<Season> seasonsList = <Season>[].obs;
   var seasonInfoData = SeasonInfo().obs;
   RxList episodsInfoData = <EpisodsData>[].obs;
-  var selectedSeason = '1'.obs;
+  var selectedSeason = ''.obs;
   RxBool rebuildListView = false.obs;
 
   // var dropdownValue = seasonsList.first.obs;
@@ -37,7 +37,7 @@ class Service extends GetxController {
   // final Rx<SeasonInfo> seasonInfoData = <SeasonInfo>.obs;
 
   Future<void> getMainData() async {
-    final String url = "https://anime-otaku-api.vercel.app/api";
+    final String url = "https://otaku1-eflaqjv0.b4a.run/api";
 
     final responce = await http.get(Uri.parse(url));
     if (responce.statusCode == 200) {
@@ -62,25 +62,37 @@ class Service extends GetxController {
     }
   }
 
-  Future<void> getSeasonData({id}) async {
+  Future<void> getSeasonData({required String id}) async {
     isSeasonLoading.value = true;
-    seasonInfoData.value = SeasonInfo();
-    seasonsList.value = [];
+    seasonsList.clear(); // Clear previous seasons data if any
+
     final String url = "https://anime-otaku-api.vercel.app/api/info?id=$id";
-    final responce = await http.get(Uri.parse(url));
-    if (responce.statusCode == 200) {
-      final data = jsonDecode(responce.body);
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      // Populate season info data
       seasonInfoData.value = SeasonInfo.fromJson(data['results']);
+
+      // Populate seasons list
       final List<dynamic> tseasonList = data['results']['seasons'];
       for (Map<String, dynamic> index in tseasonList) {
         seasonsList.add(Season.fromJson(index));
       }
-      print("hello");
-      // print(trandingAnimeList[8].title);
-      print(seasonInfoData);
-      print("hello2");
-      // print(seasonsList[0].hrefgetEpisode);
+
+      // Automatically select and fetch data for the first season
+      if (seasonsList.isNotEmpty) {
+        selectedSeason.value = seasonsList.first.hrefgetEpisode!;
+        getEpisodesData(
+            id: selectedSeason.value); // Fetch episodes for the first season
+      }
+
+      print("Season Info: ${seasonInfoData.value}");
+    } else {
+      print('Failed to load seasons data');
     }
+
     isSeasonLoading.value = false;
   }
 
@@ -89,13 +101,13 @@ class Service extends GetxController {
   Future<void> getEpisodesData({id}) async {
     try {
       isEpisodsDataLoading.value = true;
+      episodsInfoData.clear();
 
       print("getEpisodesData Called!");
       print("thi is the id iwq got : $id");
 
-      final String url = "https://anime-otaku-api.vercel.app/api/stream?id=$id";
+      final String url = "https://otaku1-eflaqjv0.b4a.run/api/stream?id=$id";
       final responce = await http.get(Uri.parse(url));
-      episodsInfoData.clear();
       if (responce.statusCode == 200) {
         final data = jsonDecode(responce.body);
 
