@@ -9,6 +9,7 @@ import 'package:get/get.dart';
 class AnimeHomePage extends StatelessWidget {
   final Service controller = Get.put(Service());
   final VideoController videoController = Get.put(VideoController());
+
   final data;
 
   AnimeHomePage({
@@ -48,6 +49,54 @@ class AnimeHomePage extends StatelessWidget {
                 children: [
                   Text("Poster: ${data.title}"),
                   SizedBox(height: 20),
+                  Obx(() {
+                    if (videoController.m3u8Links.value.isEmpty ||
+                        videoController.isVideoLoading.value) {
+                      return AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Container(
+                          color: const Color.fromARGB(255, 119, 123, 126),
+                          child: Center(
+                              child: Text(
+                            videoController.videoError.value.toString() == ""
+                                ? "Loading..."
+                                : videoController.videoError.value,
+                          )),
+                        ),
+                      );
+                    }
+
+                    if (videoController.videoError.value.isNotEmpty) {
+                      AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Container(
+                          color: const Color.fromARGB(255, 216, 178, 166),
+                          child: Center(
+                              child: Text(
+                                  videoController.videoError.value.toString())),
+                        ),
+                      );
+                    }
+                    return AspectRatio(
+                      aspectRatio: 16 / 9,
+                      // child: videoController.isVideoLoading.value
+                      //     ? Container(
+                      //         color: Colors.blue,
+                      //         child: Center(
+                      //           child: Text(
+                      //             videoController.videoError.value.toString() ==
+                      //                     ""
+                      //                 ? "Loading..."
+                      //                 : videoController.videoError.value,
+                      //           ),
+                      //         ),
+                      //       )
+                      // :
+                      child: BetterPlayer(
+                        controller: videoController.betterPlayerController,
+                      ),
+                    );
+                  }),
                   SizedBox(
                     height: 500,
                     child: Obx(
@@ -76,15 +125,6 @@ class AnimeHomePage extends StatelessWidget {
 
                             // if (controller.selectedSeason.value.isNotEmpty)
 
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 16 / 9,
-                                child: BetterPlayer(
-                                  controller:
-                                      videoController.betterPlayerController,
-                                ),
-                              ),
-                            ),
                             Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Wrap(

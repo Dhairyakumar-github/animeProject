@@ -1,24 +1,34 @@
 import 'dart:convert';
 import 'package:better_player/better_player.dart';
-import 'package:flutter/material.dart';
+
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 
 class VideoController extends GetxController {
   late BetterPlayerController betterPlayerController;
-  var isLoading = true.obs;
+  var isLoading = false.obs;
   var resolutions = <String, String>{}.obs;
   var servers = <String>["VidHide", "Stream Wish", "File Moon"].obs;
   var selectedServer = "Stream Wish".obs;
   final RxString streamId = "".obs;
   var m3u8Links = <String>[].obs;
   bool disposed = false;
+  final isVideoLoading = false.obs;
+  final RxString videoError = "".obs;
 
   @override
   void onInit() {
     super.onInit();
     initializePlayer();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    betterPlayerController.dispose();
+    disposed = true;
   }
 
   void initializePlayer() {
@@ -54,6 +64,8 @@ class VideoController extends GetxController {
   Future<void> fetchM3u8Links({
     int retryCount = 3,
   }) async {
+    videoError.value = "";
+    isVideoLoading.value = true;
     final apiUrl = 'https://otaku1-eflaqjv0.b4a.run/api/stream?id=$streamId';
 
     try {
@@ -82,20 +94,27 @@ class VideoController extends GetxController {
           if (m3u8Links.isNotEmpty) {
             setBetterPlayerSource(m3u8Links.first);
           } else {
+            videoError.value = "No m3u8 links found.";
             print('No m3u8 links found.');
           }
           isLoading.value = false;
         } else {
+          videoError.value = "No streaming information available.";
           print('No streaming information available.');
           isLoading.value = false;
         }
       } else {
+        videoError.value = "Failed to fetch data:";
         print('Failed to fetch data: ${response?.statusCode}');
         isLoading.value = false;
       }
     } catch (error) {
+      videoError.value = "something went wrong";
       print('Error fetching data: $error');
       isLoading.value = false;
+      isVideoLoading.value = false;
+    } finally {
+      isVideoLoading.value = false;
     }
   }
 
@@ -112,8 +131,8 @@ class VideoController extends GetxController {
 
       if (response != null && response.statusCode == 200) {
         final htmlData = response.body;
-        final apiUrl =
-            'https://server2stwish-erzip86p4-kashyap2024s-projects.vercel.app/api/html';
+        // this is server url
+        final apiUrl = 'https://server2stwish.vercel.app/api/html';
         final apiResponse = await retryFetch(
           () async => await http.post(
             Uri.parse(apiUrl),
@@ -123,6 +142,7 @@ class VideoController extends GetxController {
           retryCount: retryCount,
           delayBetweenRetries: Duration(seconds: 2),
         );
+        print("this is body:  $htmlData");
 
         if (apiResponse != null && apiResponse.body.isNotEmpty) {
           try {
@@ -170,7 +190,7 @@ class VideoController extends GetxController {
   }
 
   void setBetterPlayerSource(String defaultLink) async {
-    if (disposed) return;
+    // if (disposed) return;
 
     Map<String, String> resolutionsMap = {};
     for (int i = 0; i < m3u8Links.length; i++) {

@@ -37,28 +37,27 @@ class Service extends GetxController {
   // final Rx<SeasonInfo> seasonInfoData = <SeasonInfo>.obs;
 
   Future<void> getMainData() async {
-    final String url = "https://otaku1-eflaqjv0.b4a.run/api";
+    try {
+      final String url = "https://otaku1-eflaqjv0.b4a.run/api";
 
-    final responce = await http.get(Uri.parse(url));
-    if (responce.statusCode == 200) {
-      final data = jsonDecode(responce.body);
+      final responce = await http.get(Uri.parse(url));
+      if (responce.statusCode == 200) {
+        final data = jsonDecode(responce.body);
 
-      final List<dynamic> spotlightList = data['results']['spotlights'];
+        final List<dynamic> spotlightList = data['results']['spotlights'];
 
-      for (Map<String, dynamic> index in spotlightList) {
-        animeList.add(Spotlight.fromJson(index));
+        for (Map<String, dynamic> index in spotlightList) {
+          animeList.add(Spotlight.fromJson(index));
+        }
+
+        final List<dynamic> trndingList = data['results']['trending'];
+
+        for (Map<String, dynamic> index in trndingList) {
+          trandingAnimeList.add(Trending.fromJson(index));
+        }
       }
-
-      final List<dynamic> trndingList = data['results']['trending'];
-
-      for (Map<String, dynamic> index in trndingList) {
-        trandingAnimeList.add(Trending.fromJson(index));
-      }
-
-      //
-      // print(animeList[8].title);
-      // print("hello");
-      // print(trandingAnimeList[8].title);
+    } catch (e) {
+      print("error $e");
     }
   }
 
