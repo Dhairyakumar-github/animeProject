@@ -15,14 +15,20 @@ class AnimeHomePage extends StatelessWidget {
     super.key,
     required this.data,
   }) {
-    // Fetch season data by default when the widget is created
-    controller.getSeasonData(id: data.hrefgetseason);
-    print("this is hrefgetdata.... = ${data.hrefgetseason}");
+    awake();
+  }
 
-    // videoController.fetchM3u8Links();
+  void awake() async {
+    // Fetch season data by default when the widget is created
+    await controller.getSeasonData(id: data.hrefgetseason);
+    print("this is hrefgetdata.... = ${data.hrefgetseason}");
+    print(
+        "this is episods data id.... = ${controller.animeList[1].hrefgetseason}");
+    await controller.getEpisodesData(
+        id: controller.seasonsList[0].hrefgetEpisode!);
+    videoController.streamId.value = controller.episodsInfoData[0].hrefdataid;
+    await videoController.fetchM3u8Links();
     // controller.selectedSeason.value = "";
-    // controller.getEpisodesData(
-    //     id: controller.seasonsList.first.hrefgetEpisode!);
   }
 
   @override
@@ -127,8 +133,8 @@ class AnimeHomePage extends StatelessWidget {
                             Expanded(
                               child: Obx(
                                 () {
-                                  print(
-                                      " tjhis is ddfdfref ${controller.episodsInfoData[0].dataId}");
+                                  // print(
+                                  //     " tjhis is ddfdfref ${controller.episodsInfoData[0].dataId}");
                                   // Check if the episodes data is loading
                                   if (controller.isEpisodsDataLoading.value) {
                                     return Center(
@@ -144,6 +150,15 @@ class AnimeHomePage extends StatelessWidget {
                                     itemBuilder: (context, index) {
                                       return ListTile(
                                         title: Text("Episode ${index + 1}"),
+                                        onTap: () async {
+                                          print(
+                                              "${controller.episodsInfoData[index].hrefdataid}");
+                                          videoController.streamId.value =
+                                              controller.episodsInfoData[index]
+                                                  .hrefdataid;
+                                          await videoController
+                                              .fetchM3u8Links();
+                                        },
                                         // onTap: () {
                                         //   // Navigate to video player screen
                                         //   // Get.to(() => VideoPlayerScreen2(

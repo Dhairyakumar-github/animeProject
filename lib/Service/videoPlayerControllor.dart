@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:better_player/better_player.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
@@ -22,11 +23,23 @@ class VideoController extends GetxController {
 
   void initializePlayer() {
     betterPlayerController = BetterPlayerController(
-      const BetterPlayerConfiguration(
+      BetterPlayerConfiguration(
         aspectRatio: 16 / 9,
-        autoPlay: false, // Start with autoPlay off, enable later
+        autoPlay: true, // Start with autoPlay off, enable later
         looping: true,
         handleLifecycle: true,
+        autoDispose: true,
+        controlsConfiguration:
+            BetterPlayerControlsConfiguration(showControls: true),
+        // placeholder: Container(
+        //   color: Colors.grey,
+        // ),
+        // showPlaceholderUntilPlay: true,
+        // loading: Container(
+        //   child: Center(
+        //     child: CircularProgressIndicator(),
+        //   ),
+        // ),
       ),
     );
   }
@@ -170,7 +183,7 @@ class VideoController extends GetxController {
       resolutions: resolutionsMap,
     );
 
-    await betterPlayerController.setupDataSource(betterPlayerDataSource);
+    betterPlayerController.setupDataSource(betterPlayerDataSource);
     print('BetterPlayer source set to: $defaultLink');
 
     betterPlayerController.play();
